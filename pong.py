@@ -2,6 +2,7 @@ import pygame
 pygame.init()
 
 WIDTH, HEIGHT = 700, 500 
+BALL_COLORS = [(255, 0, 0), (0, 255, 0), (0, 0, 255)]
 WIN = pygame.display.set_mode((WIDTH,HEIGHT))
 pygame.display.set_caption("pong")
 
@@ -10,14 +11,18 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
 PADDLE_WIDTH, PADDLE_HIEGHT = 20, 100
+BALL_RADIUS = 7
+
+SCORRE_FONT = pygame.font.SysFont("comicsans", 50)
+WINNING_SCORE = 10
 ############# Class Paddle ( class das pas) ##########
 class Paddle:
     COLOR = WHITE
     VEL = 4
 
     def __init__(self,x,y, width, height):
-        self.x = x
-        self.y = y
+        self.x = self.original_x = x 
+        self.y = self.original_y = y
         self.width = width
         self.height = height
     
@@ -30,9 +35,64 @@ class Paddle:
         else:
             self.y += self.VEL
 
+    def reset(selft):
+        self.x = self.original_x 
+        self.y = self.original_y 
+
+    
 class Ball:
+    MAX_VEL = 2    
+    COLOR = WHITE
+
     def __init__(self, x,y, radius):
-        pass
+        self.x = self.original_x = x 
+        self.y = self.original_y = y 
+        self.radius = radius
+        self.x_vel = self.MAX_VEL
+        self.y_vel = 0
+
+    def draw(self, win):
+        pygame.draw.circle(win, self.COLOR ,(self.x , self.y), self.radius)
+
+    def move(self):
+        self.x += self.x_vel
+        self.y += self.y_vel
+
+    def reset(self):
+        self.x = self.original_x
+        self.y = self.original_y
+        self.y_vel = 0 
+        self.x_vel *= -1
+
+def handle_collision(ball, left_paddle, right_paddle):
+    if ball.y + ball.radius >= HEIGHT:
+        ball.y_vel *= -1
+    elif ball.y - ball.radius <= 0:
+        ball.y_vel *= -1
+    
+    if ball.x_vel < 0:
+        if ball.y >= left_paddle.y and ball.y <= left_paddle.y + left_paddle.height:
+            if ball.x - ball.radius <= left_paddle.x + left_paddle.width:
+                ball.x_vel *= -1
+
+                middle_y = left_paddle.y + left_paddle.height / 2
+                difference_in_y = middle_y - ball.y
+                reduction_factor = (left_paddle.height / 2) / ball.MAX_VEL
+                y_vel = difference_in_y / reduction_factor
+                ball.y_vel = -1 * y_vel
+                
+
+                
+    else:
+        if ball.y >= right_paddle.y and ball.y <= right_paddle.y + right_paddle.height:
+            if ball.x + ball.radius >= right_paddle.x:
+                ball.x_vel *= -1   
+
+                middle_y = right_paddle.y + right_paddle.height / 2
+                difference_in_y = middle_y - ball.y
+                reduction_factor = (right_paddle.height / 2) / ball.MAX_VEL
+                y_vel = difference_in_y / reduction_factor
+                ball.y_vel = -1 * y_vel                
 
 def handle_paddle_movement(keys, left_paddle,right_paddle):
     if keys[pygame.K_w] and left_paddle.y - left_paddle.VEL >= 0:
@@ -46,8 +106,13 @@ def handle_paddle_movement(keys, left_paddle,right_paddle):
         right_paddle.move(up=False)
 
 ############### drawings of game objects (Desenhos dos objetos do jogos) ###################
-def draw(win, paddles):
+def draw(win, paddles, ball, left_scorre, rigth_scorre):
     win.fill(BLACK)
+
+    left_scorre_text = SCORRE_FONT.render(f"{left_scorre}", 1, WHITE)
+    rigth_scorre_text = SCORRE_FONT.render(f"{rigth_scorre}", 1, WHITE)
+    win.blit(left_scorre_text, ( WIDTH//4 - left_scorre_text.get_width()//2,20))
+    win.blit(rigth_scorre_text, ( WIDTH*(3/4) - rigth_scorre_text.get_width()//2,20))
 
     for paddle in paddles:
         paddle.draw(win)
@@ -57,7 +122,7 @@ def draw(win, paddles):
             continue
         pygame.draw.rect(win, WHITE, (WIDTH//2 - 5, i, 10, HEIGHT//20))
 
-
+    ball.draw(win)
     pygame.display.update()
 
 
@@ -66,8 +131,13 @@ def main():
     run = True
     left_paddle = Paddle(10, HEIGHT//2 - PADDLE_HIEGHT//2,PADDLE_WIDTH, PADDLE_HIEGHT)
     rigth_paddle = Paddle(WIDTH - 10 - PADDLE_WIDTH, HEIGHT//2 - PADDLE_HIEGHT//2, PADDLE_WIDTH, PADDLE_HIEGHT)
+
+    ball = Ball(WIDTH // 2, HEIGHT // 2, BALL_RADIUS)
+
+    left_scorre = 0
+    rigth_socrre = 0
     while run:
-        draw(WIN, [left_paddle,rigth_paddle])
+        draw(WIN, [left_paddle, rigth_paddle], ball, left_scorre, rigth_socrre)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
@@ -77,8 +147,40 @@ def main():
         handle_paddle_movement(keys, left_paddle, rigth_paddle)
 
 
+        ball.move()
+        handle_collision(ball, left_paddle, rigth_paddle)
+
+
+        if ball.x < 0 :
+            rigth_socrre += 1
+            ball.reset()
+        elif ball.x > WIDTH:
+            left_scorre += 1
+            ball.reset()
+            
+
+        won = False
+        if left_scorre >= WINNING_SCORE:
+            won= True
+            win_text = "Left Player Won !"
+        elif rigth_socrre >=WINNING_SCORE:
+            won =True
+            win_text= "Right Player Won"
+
+        if won:
+            text = SCORRE_FONT.render(win_text, 1 , WHITE)
+            WIN.blit(text,(WIDTH//2 - text.get_width()//2, HEIGHT//2 - text.get_height()//2))
+            ball.reset()
+            left_paddle.reset()
+            rigth_paddle.reset()
+            left_scorre = 0
+            rigth_socrre = 0
+
+
     pygame.quit()
 
 
 if __name__ == "__main__":
     main()
+
+
