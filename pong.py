@@ -38,8 +38,6 @@ class Paddle:
     def reset(selft):
         self.x = self.original_x 
         self.y = self.original_y 
-
-    
 class Ball:
     MAX_VEL = 2    
     COLOR = WHITE
